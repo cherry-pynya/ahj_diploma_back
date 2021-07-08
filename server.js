@@ -56,7 +56,9 @@ const data = [
 
 wsServer.on('connection', (ws, req) => {
   ws.on('message', (msg) => {
+    console.log(msg);
     const message = JSON.parse(msg);
+    console.log(message);
     switch(message.comand) {
       case 'sentInitailData':
         message.data = data;
