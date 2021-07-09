@@ -7,7 +7,7 @@ module.exports = class Manager {
     constructor(ws, data) {
         this.ws = ws;
         this.data = data;
-        this.counter = 0;
+        this.counter = this.data.length;
     }
 
     init() {
@@ -25,14 +25,24 @@ module.exports = class Manager {
     }
 
     lazyLoad() {
-        if (this.counter > this.data.length) return false;
-        const result = this.data.slice(this.counter, this.counter + 10);
-        this.counter += 10;
-        this.ws.send(JSON.stringify({
-            comand: 'lazyLoad',
-            data: result,
-        }));
-        return;
+        if (this.counter === 0) return false;
+        if (this.counter <= 10) {
+            const result = this.data.slice(0, this.counter);
+            this.counter = 0;
+            this.ws.send(JSON.stringify({
+                comand: 'lazyLoad',
+                data: result.reverse(),
+            }));
+            return;
+        } else {
+            const result = this.data.slice(this.counter - 10, this.counter);
+            this.counter -= 10;
+            this.ws.send(JSON.stringify({
+                comand: 'lazyLoad',
+                data: result.reverse(),
+            }));
+            return;
+        }
     }
 
     newMessage(message) {
@@ -41,7 +51,7 @@ module.exports = class Manager {
             text: message.text,
             timestamp: `${moment().format("L")} ${moment().format("LTS")}`,
             type: "text",
-            index: data.length,
+            index: this.data.length,
           };
           this.data.push(item);
           message.data = item;
