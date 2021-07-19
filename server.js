@@ -1,11 +1,17 @@
 const http = require("http");
 const Koa = require("koa");
-const WS = require("ws");
+const Router = require("@koa/router");
 const koaBody = require("koa-body");
 const cors = require("@koa/cors");
+const WS = require("ws");
+const serve = require('koa-static');
 const Manager = require("./storageManager");
+const data = require('./data');
+const path = require('path');
 
 const app = new Koa();
+
+
 app.use(
   cors({
     origin: "*",
@@ -15,113 +21,33 @@ app.use(
   })
 );
 
-app.use(koaBody({ json: true, text: true, urlencoded: true }));
+app.use(koaBody({
+  json: true, text: true, urlencoded: true, multipart: true,
+}));
+app.use(serve('./public'));
+
+const router = new Router();
+app.use(router.routes()).use(router.allowedMethods());
 
 const port = process.env.PORT || 7777;
 const server = http.createServer(app.callback());
 const wsServer = new WS.Server({ server });
 
-const data = [
-  {
-    id: "a",
-    text: "1",
-    timestamp: "21:21 11:11:1993",
-    type: "text",
-    index: 0,
-  },
-  {
-    id: "c",
-    text: "2",
-    timestamp: "21:21 11:11:1993",
-    type: "text",
-    index: 1,
-  },
-  {
-    id: "b",
-    text: "3",
-    timestamp: "21:21 11:11:1993",
-    type: "text",
-    index: 2,
-  },
-  {
-    id: "d",
-    text: "4 https://github.com/cherry-pynya/chat_front_ahj/blob/main/src/js/ws.js",
-    timestamp: "21:21 11:11:1993",
-    type: "link",
-    index: 3,
-  },
-  {
-    id: "d",
-    text: "5 https://github.com/cherry-pynya/chat_front_ahj/blob/main/src/js/ws.js",
-    timestamp: "21:21 11:11:1993",
-    type: "link",
-    index: 4,
-  },
-  {
-    id: "e",
-    text: "6 https://github.com/cherry-pynya/chat_front_ahj/blob/main/src/js/ws.js test",
-    timestamp: "21:21 11:11:1993",
-    type: "link",
-    index: 5,
-  },
-  {
-    id: "f",
-    text: "7 https://github.com/cherry-pynya/chat_front_ahj/blob/main/src/js/ws.js",
-    timestamp: "21:21 11:11:1993",
-    type: "link",
-    index: 6,
-  },
-  {
-    id: "g",
-    text: "8 message",
-    timestamp: "21:21 11:11:1993",
-    type: "text",
-    index: 7,
-  },
-  {
-    id: "h",
-    text: "9 message",
-    timestamp: "21:21 11:11:1993",
-    type: "text",
-    index: 8,
-  },
-  {
-    id: "j",
-    text: "10 message",
-    timestamp: "21:21 11:11:1993",
-    type: "text",
-    index: 9,
-  },
-  {
-    id: "k",
-    text: "11 message",
-    timestamp: "21:21 11:11:1993",
-    type: "text",
-    index: 10,
-  },
-  {
-    id: "l",
-    text: "12 message",
-    timestamp: "21:21 11:11:1993",
-    type: "text",
-    index: 11,
-  },
-  {
-    id: "p",
-    text: "13 message",
-    timestamp: "21:21 11:11:1993",
-    type: "text",
-    index: 12,
-  },
-  
-];
-
 const clients = [];
 
 wsServer.on("connection", (ws, req) => {
   clients.push(ws);
-  const manager = new Manager(ws, data);
+  const manager = new Manager(ws, data, path.join(__dirname, '/public'), clients);
   manager.init();
+
+  router.post("/upload", async (ctx) => {
+    manager.saveFile(ctx.request.files.file)
+      .then((response) => {
+        ws.send(response)
+      });
+    ctx.response.status = 204;
+  });
+
   ws.on('close', () => {
     const wsIndex = clients.indexOf(ws);
     if (wsIndex !== -1) {
