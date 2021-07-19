@@ -43,7 +43,9 @@ wsServer.on("connection", (ws, req) => {
   router.post("/upload", async (ctx) => {
     manager.saveFile(ctx.request.files.file)
       .then((response) => {
-        ws.send(response)
+        clients.forEach((el) => {
+          el.send(response);
+        });
       });
     ctx.response.status = 204;
   });

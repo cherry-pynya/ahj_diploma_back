@@ -1,5 +1,6 @@
 const { v4: uuidv4 } = require("uuid");
 const moment = require("moment");
+const { checkLink } = require("./checkLink");
 const path = require("path");
 const fs = require("fs");
 
@@ -29,6 +30,12 @@ module.exports = class Manager {
         case "geo":
           this.newGeo(message);
           return;
+        case 'findMessage':
+            this.findMessage(message);
+            return;
+        case 'refreshFeed':
+            this.counter = this.data.length;
+            this.lazyLoad();
       }
     });
   }
@@ -59,17 +66,34 @@ module.exports = class Manager {
   }
 
   newMessage(message) {
+    let type;
+    if (checkLink(message.text)) {
+        type = 'link';
+    } else {
+        type = 'text';
+    }
     const item = {
       id: uuidv4(),
       text: message.text,
       timestamp: `${moment().format("L")} ${moment().format("LTS")}`,
-      type: "text",
+      type: type,
       index: this.data.length,
     };
     this.data.push(item);
     message.data = item;
     this.sendMessage(JSON.stringify(message));
     return;
+  }
+
+  findMessage(message) {
+    const key = message.text;
+    const arr = this.data.filter((el) => {
+        if (el.text.indexOf(key) !== -1) {
+            return el;
+        }
+    })
+    message.data = arr;
+    this.ws.send(JSON.stringify(message));
   }
 
   newGeo(message) {
@@ -109,6 +133,7 @@ module.exports = class Manager {
           text: fileName,
           timestamp: `${moment().format("L")} ${moment().format("LTS")}`,
           type: "file",
+          fileType: file.type.split("/")[1],
           index: this.data.length,
         };
         this.data.push(item);
