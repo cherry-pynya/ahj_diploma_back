@@ -45,6 +45,7 @@ wsServer.on("connection", (ws, req) => {
       .then((response) => {
         clients.forEach((el) => {
           el.send(response);
+          el.send(manager.categories());
         });
       });
     ctx.response.status = 204;

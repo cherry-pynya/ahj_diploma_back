@@ -1,6 +1,6 @@
 const { v4: uuidv4 } = require("uuid");
 const moment = require("moment");
-const { checkLink } = require("./checkLink");
+const checkLink = require("./checkLink");
 const path = require("path");
 const fs = require("fs");
 
@@ -18,6 +18,7 @@ module.exports = class Manager {
   }
 
   init() {
+    this.ws.send(this.categories());
     this.ws.on("message", (msg) => {
       const message = JSON.parse(msg);
       switch (message.comand) {
@@ -29,6 +30,7 @@ module.exports = class Manager {
           return;
         case "geo":
           this.newGeo(message);
+          this.sendMessage(this.categories());
           return;
         case 'findMessage':
             this.findMessage(message);
@@ -36,6 +38,14 @@ module.exports = class Manager {
         case 'refreshFeed':
             this.counter = this.data.length;
             this.lazyLoad();
+            this.ws.send(this.categories());
+            return;
+        case 'showCategory':
+          this.showCategory(message);
+            return;
+        case 'botComand':
+          this.botComand(message);
+          return;
       }
     });
   }
@@ -82,6 +92,7 @@ module.exports = class Manager {
     this.data.push(item);
     message.data = item;
     this.sendMessage(JSON.stringify(message));
+    this.sendMessage(this.categories());
     return;
   }
 
@@ -114,8 +125,6 @@ module.exports = class Manager {
     return new Promise((res, rej) => {
       const fileName = file.name;
       const filyType = file.type.split("/")[0];
-      console.log(file.type.split("/")[0])
-      console.log(file.type.split("/")[1])
       const oldPath = file.path;
       const newPath = path.join(this.dir, fileName);
       const readStream = fs.createReadStream(oldPath);
@@ -148,7 +157,6 @@ module.exports = class Manager {
         );
       });
       readStream.pipe(writeStream);
-      //this.categories();
     });
   }
 
@@ -160,6 +168,7 @@ module.exports = class Manager {
   }
 
   categories() {
+      const categories ={};
       const common = this.data.length;
       const textIndex = this.data.filter((el) => {
           if (el.type === 'text') return el;
@@ -172,13 +181,119 @@ module.exports = class Manager {
       });
       const fileIndex = files.length;
       if (fileIndex > 0) {
-          
+          const audio = files.filter((el) => {
+            if (el.fileType === 'audio') return el;
+          });
+          if (audio.length > 0) {
+            categories.Audio = audio.length;
+          }
+          const image = files.filter((el) => {
+            if (el.fileType === 'image') return el;
+          });
+          if (image.length > 0) {
+            categories.Images = image.length;
+          };
+          const application = files.filter((el) => {
+            if (el.fileType === 'application') return el;
+          });
+          if (application.length > 0) {
+            categories.Files = application.length;
+          };
+          const tetx = files.filter((el) => {
+            if (el.fileType === 'tetx') return el;
+          });
+          if (tetx.length > 0) {
+            categories.txtFiles = tetx.length;
+          };
       }
-      console.log({
-          common: common,
-          textIndex: textIndex,
-          linkIndex: linkIndex,
-          fileIndex: fileIndex,
-      })
+      if (textIndex > 0) {
+        categories.TextMessages = textIndex;
+      };
+      if (linkIndex > 0) {
+        categories.Links = linkIndex;
+      };
+      categories.Messages = common;
+      return JSON.stringify({
+        comand: 'categories',
+        data: categories,
+      });
+  }
+
+  showCategory(message) {
+    if (message.data === 'Links') {
+      message.data = this.data.filter((el) => {
+        if (el.type === 'link') return el;
+      });
+      this.ws.send(JSON.stringify(message)); 
+    };
+    if (message.data === 'Messages') {
+      this.counter = this.data.length;
+      this.lazyLoad();
+    };
+    if (message.data === 'TextMessages') {
+      message.data = this.data.filter((el) => {
+        if (el.type === 'text') return el;
+      });
+      this.ws.send(JSON.stringify(message)); 
+    };
+    if (message.data === 'Audio') {
+      message.data = this.data.filter((el) => {
+        if (el.fileType === 'audio') return el;
+      });
+      this.ws.send(JSON.stringify(message)); 
+    };
+    if (message.data === 'Images') {
+      message.data = this.data.filter((el) => {
+        if (el.fileType === 'image') return el;
+      });
+      this.ws.send(JSON.stringify(message)); 
+    };
+    if (message.data === 'Files') {
+      message.data = this.data.filter((el) => {
+        if (el.fileType === 'application') return el;
+      });
+      this.ws.send(JSON.stringify(message)); 
+    };
+    if (message.data === 'txtFiles') {
+      message.data = this.data.filter((el) => {
+        if (el.fileType === 'tetx') return el;
+      });
+      this.ws.send(JSON.stringify(message)); 
+    };
+  }
+
+  botComand(message) {
+    const dog = message.request.indexOf('@');
+    const dash = message.request.indexOf('-');
+    const comand = message.request.slice(dog + 1, dash);
+    const str = message.request.slice(dash + 1, message.request.length);
+    if (comand === 'currency') {
+      this.newMessage({
+        comand: 'newMessage',
+        text: `Курс ${str} к рублю: 73,33`,
+      });
+    } else if (comand === 'weather') {
+      this.newMessage({
+        comand: 'newMessage',
+        text: `В ${str} +30 градусов в тени, СПАСАЙТЕСЬ!`,
+      });
+    } else if (comand === 'english') {
+      this.newMessage({
+        comand: 'newMessage',
+        text: `${str} переводится как: что-то на английском`,
+      });
+    } else if (comand === 'ticker') {
+      this.newMessage({
+        comand: 'newMessage',
+        text: `Стоимость ${str} на московской бирже - 666 денег`,
+      });
+    } else if (comand === 'time') {
+      this.newMessage({
+        comand: 'newMessage',
+        text: `Время в ${str} 00:00`,
+      });
+    } else {
+      return;
+    }
   }
 };
