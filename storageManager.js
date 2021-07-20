@@ -114,6 +114,8 @@ module.exports = class Manager {
     return new Promise((res, rej) => {
       const fileName = file.name;
       const filyType = file.type.split("/")[0];
+      console.log(file.type.split("/")[0])
+      console.log(file.type.split("/")[1])
       const oldPath = file.path;
       const newPath = path.join(this.dir, fileName);
       const readStream = fs.createReadStream(oldPath);
@@ -133,7 +135,8 @@ module.exports = class Manager {
           text: fileName,
           timestamp: `${moment().format("L")} ${moment().format("LTS")}`,
           type: "file",
-          fileType: file.type.split("/")[1],
+          fileType: file.type.split("/")[0],
+          fileFormat: file.type.split("/")[1],
           index: this.data.length,
         };
         this.data.push(item);
@@ -145,6 +148,7 @@ module.exports = class Manager {
         );
       });
       readStream.pipe(writeStream);
+      //this.categories();
     });
   }
 
@@ -153,5 +157,28 @@ module.exports = class Manager {
       el.send(msg);
     });
     return;
+  }
+
+  categories() {
+      const common = this.data.length;
+      const textIndex = this.data.filter((el) => {
+          if (el.type === 'text') return el;
+      }).length;
+      const linkIndex = this.data.filter((el) => {
+        if (el.type === 'link') return el;
+      }).length;
+      const files = this.data.filter((el) => {
+        if (el.type === 'file') return el;
+      });
+      const fileIndex = files.length;
+      if (fileIndex > 0) {
+          
+      }
+      console.log({
+          common: common,
+          textIndex: textIndex,
+          linkIndex: linkIndex,
+          fileIndex: fileIndex,
+      })
   }
 };
