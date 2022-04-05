@@ -9,4 +9,4 @@
 
 ## Хостинг
 
-Приложение размещено на [Heroku](wss://cherry-pynya-ahj-diploma-back.herokuapp.com).
+Приложение размещено на Heroku. ссылка: wss://cherry-pynya-ahj-diploma-back.herokuapp.com.
